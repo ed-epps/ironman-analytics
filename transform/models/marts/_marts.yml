@@ -1,0 +1,50 @@
+version: 2
+
+seeds:
+  - name: sport_types
+    description: Business rules for each Strava sport type. Edit this CSV to change a rule.
+    columns:
+      - name: sport_type
+        data_tests: [unique, not_null]
+      - name: sport_group
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [Swim, Bike, Run, Strength, Other]
+      - name: duration_basis
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [moving, elapsed]
+
+models:
+  - name: dim_sport
+    description: One row per Strava sport type, with its sport group, duration rule and power rule.
+    columns:
+      - name: sport_type
+        description: Primary key.
+        data_tests: [unique, not_null]
+
+  - name: fct_activities
+    description: One row per activity, with the sport rules applied (training duration, power eligibility).
+    columns:
+      - name: activity_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: sport_group
+        description: Swim / Bike / Run / Strength / Other, from dim_sport.
+        data_tests: [not_null]
+      - name: training_seconds
+        description: Elapsed time for Strength, moving time for everything else.
+        data_tests: [not_null]
+
+  - name: fct_daily_training
+    description: >
+      One row per calendar day from the first activity to today, including rest days,
+      with hours and distance by sport group. The base for Week 4 training-load metrics.
+    columns:
+      - name: activity_date
+        description: Primary key.
+        data_tests: [unique, not_null]

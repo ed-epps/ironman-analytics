@@ -1,4 +1,5 @@
 -- One row per Strava activity: de-duplicated, renamed, converted to sensible units.
+-- Staging only cleans the data. Business rules (sport groups, duration rule, power rules) live in the marts.
 
 with source as (
 
@@ -29,14 +30,9 @@ renamed as (
         timezone('UTC', start_date_local)               as started_at_local,
         timezone('UTC', start_date_local)::date         as activity_date,
 
-        -- duration (seconds), plus the training-duration rule:
-        -- WeightTraining uses elapsed time, everything else moving time
+        -- duration (seconds)
         moving_time                                     as moving_seconds,
         elapsed_time                                    as elapsed_seconds,
-        case
-            when sport_type = 'WeightTraining' then elapsed_time
-            else moving_time
-        end                                             as training_seconds,
 
         -- distance and elevation
         round(distance / 1000.0, 3)                     as distance_km,
@@ -51,22 +47,10 @@ renamed as (
         average_heartrate                               as avg_heartrate,
         max_heartrate                                   as max_heartrate,
 
-        -- power: only real power-meter data, and only for bike and run
-        case
-            when sport_type in ('Ride', 'GravelRide', 'VirtualRide', 'MountainBikeRide', 'Run', 'TrailRun')
-                then coalesce(device_watts, false)
-            else false
-        end                                             as has_power_meter,
-        case
-            when sport_type in ('Ride', 'GravelRide', 'VirtualRide', 'MountainBikeRide', 'Run', 'TrailRun')
-             and device_watts
-                then average_watts
-        end                                             as avg_power_w,
-        case
-            when sport_type in ('Ride', 'GravelRide', 'VirtualRide', 'MountainBikeRide', 'Run', 'TrailRun')
-             and device_watts
-                then weighted_average_watts
-        end                                             as weighted_avg_power_w,
+        -- power: keep only real power-meter data (not Strava's estimates)
+        coalesce(device_watts, false)                   as has_power_meter,
+        case when device_watts then average_watts end            as avg_power_w,
+        case when device_watts then weighted_average_watts end   as weighted_avg_power_w,
 
         -- flags
         trainer                                         as is_indoor,

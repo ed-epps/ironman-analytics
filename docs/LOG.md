@@ -12,6 +12,24 @@ source .venv/bin/activate
 ```
 Your prompt should start with `(.venv)`.
 
+### Open DuckDB
+```bash
+duckdb data/training.duckdb         # from the project folder (prompt ends in ironman-analytics %)
+duckdb ../data/training.duckdb      # from transform/ (prompt ends in transform %)
+```
+Then, at the `D ` prompt:
+```sql
+.pager off        -- stop long results opening in the (END) viewer
+show all tables;  -- see what's there
+.quit             -- leave
+```
+To run a single query without opening the shell:
+```bash
+duckdb ../data/training.duckdb -c "select count(*) from main_marts.fct_activities"
+```
+Where the tables live: `raw.*` (loaded data), `main_staging.*` (staging views), `main_reference.*` (seeds), `main_marts.*` (core models).
+**Close DuckDB before running dbt.** dbt can't write to the database while it's open.
+
 ### Everyday commands
 | What | Command |
 |---|---|
@@ -154,3 +172,29 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
 ### Bug I found and fixed
 - Strava's `start_date_local` is local clock time **labelled as UTC**. My Week 1 `::timestamp` cast let DuckDB convert it
   to London time, which **shifted every summer (BST) activity by an hour**. Fixed in staging with `timezone('UTC', start_date_local)`.
+
+---
+
+## Week 3: Core models
+
+### What I built
+- **Seed `sport_types.csv`:** the business rules for each Strava sport type (sport group, duration basis, power eligible).
+  To change a rule, I edit the CSV, not the SQL.
+- **`dim_sport`:** sport dimension built from the seed, plus `is_triathlon_discipline`.
+- **`fct_activities`:** one row per activity, with the rules applied (training duration, power only where eligible).
+- **`fct_daily_training`:** one row per calendar day **including rest days** (date spine with `generate_series`),
+  with hours and km by sport group. This is the base for the Week 4 training-load maths.
+- 24 dbt tests passing (unique / not-null keys, accepted values, staging `sport_type` → seed relationship).
+
+### Decisions
+- **Layering:** staging only cleans the data, and marts apply the business rules. The WeightTraining duration rule and the
+  bike/run power rule moved out of staging and into the seed.
+- **Sport groups:** EBikeRide → Other (motor-assisted). Workout, HIIT, Yoga, racket and water sports → Other.
+- The list of valid sport types lives in one place (the seed). A new Strava type fails the relationship test until it's added there.
+
+### What I learned
+- **Seeds:** small CSVs that dbt loads as tables. Good for reference data and business rules.
+- **Facts vs dimensions:** facts are events or measurements (activities, days), and dimensions describe them (sports).
+- **Date spine:** generate every date, then `left join` the activity data on to it, so rest days exist as rows.
+  You need this for any rolling or time-series metric.
+- **Reconciliation:** checked that the new models' 2026 swim / bike / run totals match the Week 1 raw-data numbers. They do.

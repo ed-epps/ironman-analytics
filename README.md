@@ -3,7 +3,7 @@
 An end-to-end analytics engineering project built on my own Ironman training data:
 **Strava API → Python → DuckDB → dbt → dashboard.**
 
-> 🚧 Work in progress. Currently at **Week 2: dbt staging**.
+> 🚧 Work in progress. Currently at **Week 4: training-load metrics**.
 
 ## Why
 As a triathlete, I wanted one trusted model of my swim, bike and run training, with training load,
@@ -32,7 +32,7 @@ cd transform && dbt build            # build and test the models
 ## Roadmap
 - [x] Week 1: Extract Strava data and load raw into DuckDB
 - [ ] Week 2: dbt staging model, tests and docs
-- [ ] Week 3: Core models (activities fact, daily training fact, sport dimension)
+- [x] Week 3: Core models (activities fact, daily training fact, sport dimension)
 - [ ] Week 4: Training-load metrics (CTL / ATL / TSB) with window functions
 - [ ] Week 5: Dashboard
 - [ ] Week 6: Write-up and automated weekly refresh
