@@ -18,6 +18,12 @@ seeds:
           - accepted_values:
               arguments:
                 values: [moving, elapsed]
+      - name: load_method
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [power_then_hr, hr, pace]
 
 models:
   - name: dim_sport
@@ -48,3 +54,26 @@ models:
       - name: activity_date
         description: Primary key.
         data_tests: [unique, not_null]
+
+  - name: fct_activity_load
+    description: >
+      Training stress score (TSS) per activity. Bike: power first, HR second. Run, Strength, Other: HR.
+      Swim: pace. Thresholds are matched by date and are not stored here.
+    columns:
+      - name: activity_id
+        data_tests: [unique, not_null]
+      - name: load_basis
+        description: Which rule scored the activity (power / hr / pace / none).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [power, hr, pace, none]
+
+  - name: fct_daily_load
+    description: Daily TSS with fitness (CTL), fatigue (ATL) and form (TSB), including rest days.
+    columns:
+      - name: activity_date
+        data_tests: [unique, not_null]
+      - name: fitness_ctl
+        data_tests: [not_null]

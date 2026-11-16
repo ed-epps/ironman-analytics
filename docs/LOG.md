@@ -198,3 +198,35 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
 - **Date spine:** generate every date, then `left join` the activity data on to it, so rest days exist as rows.
   You need this for any rolling or time-series metric.
 - **Reconciliation:** checked that the new models' 2026 swim / bike / run totals match the Week 1 raw-data numbers. They do.
+
+---
+
+## Week 4: Training load
+
+### What I built
+- **Private thresholds file** (`data/private/athlete_thresholds.csv`, git-ignored) → `stg_athlete__thresholds`.
+  Columns: outdoor FTP, **indoor FTP** (turbo reads high), bike / run threshold HR, swim threshold pace, each with an `effective_from` date.
+  The repo only has `docs/athlete_thresholds.example.csv` with made-up values.
+- `load_method` added to the sport seed: power_then_hr (bike), hr (run, strength, other), pace (swim).
+- **`fct_activity_load`:** TSS per activity, with `load_basis` showing which rule scored it. Thresholds aren't stored in it.
+- **`fct_daily_load`:** daily TSS, fitness (CTL), fatigue (ATL), form (TSB), rolling 7 / 28-day TSS, 7-day fitness ramp.
+- 38 dbt tests passing. Methodology section with references added to the README.
+
+### Decisions
+- Strength and Other are scored by HR (same as runs), so padel and gym fatigue count.
+- Indoor rides (VirtualRide or Strava trainer flag) use the indoor FTP.
+- **Bike rides with no power and no HR stay unscored (0 TSS)** rather than estimated. Most are from 2020, and only about
+  3 hours in 2026, so the effect on current fitness is negligible.
+
+### Checks
+- Scoring mix looks right: power-first is working on the bike, swims are all pace-scored.
+- Hand-checked the CTL / ATL / TSB maths day by day.
+- **Reconciled against other fitness tools: tracks closely.**
+
+### What I learned
+- **ASOF JOIN:** match each row to the latest row on or before its date (thresholds over time).
+- **Recursive CTE:** when each row depends on the previous one (exponentially weighted averages).
+- **Window frames:** `sum(...) over (order by date rows between 6 preceding and current row)` = rolling 7 days
+  (works because the date spine has one row per day).
+- `dbt build --full-refresh` is needed when a seed's columns change.
+- Where TSS comes from (Coggan / TrainingPeaks), and that the fitness/fatigue model comes from Banister (1975).

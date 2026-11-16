@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: stg_athlete__thresholds
+    description: >
+      Training thresholds over time (FTP, threshold HR for bike and run, swim threshold pace).
+      Read from data/private/athlete_thresholds.csv, which is git-ignored. Never shown in public outputs.
+    columns:
+      - name: effective_from
+        description: Date this set of thresholds starts to apply. The first row should pre-date your first activity.
+        data_tests: [unique, not_null]
