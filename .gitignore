@@ -1,0 +1,24 @@
+# Secrets - never commit these
+.env
+.strava_tokens.json
+
+# Personal data stays on your machine
+data/raw/**/*
+!data/raw/**/
+!data/raw/**/.gitkeep
+data/*.duckdb
+data/*.duckdb.wal
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# dbt (from Week 2)
+target/
+dbt_packages/
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
