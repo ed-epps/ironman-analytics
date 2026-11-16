@@ -17,6 +17,8 @@ Your prompt should start with `(.venv)`.
 |---|---|
 | Fetch new Strava activities | `python extract/strava_extract.py` |
 | Reload DuckDB from the raw files | `python load/load_duckdb.py` |
+| Build and test all dbt models (from `transform/`) | `dbt build` |
+| Browse the dbt docs site (from `transform/`) | `dbt docs generate` → `dbt docs serve` (Ctrl + C to stop) |
 | Open the database | `duckdb data/training.duckdb` |
 | Leave DuckDB | `.quit` |
 | Leave an `(END)` screen | press `q` |
@@ -87,6 +89,12 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
   Public outputs (README, screenshots, dashboard) never **directly show** a threshold value. Showing derived metrics
   (TSS, IF, normalised power, zone percentages) is fine, even if someone could work a threshold back out from them.
 
+- **GPS stays in the models** (changed from the original plan) → for a route **heat map**. Raw data stays local
+  (`data/` is git-ignored). For anything published, apply a privacy mask: drop GPS points within a set radius of home,
+  with the home coordinates kept in `.env`, never in the repo.
+- **COROS dropped entirely** (16 Nov). Sleep, HRV, stress and resting HR data won't be part of the project, so they
+  can't end up on a published dashboard. **Strava is the only source.** The COROS FIT parser can be removed later.
+
 ### Mistake I caught
 - My first hours/km query gave rides at 4.5 km/h. I'd summed a time column in the km line.
   **Lesson: sense-check results with a derived figure (km ÷ hours = speed).**
@@ -116,6 +124,33 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
 - [x] Write the `CASE WHEN` duration rule and re-run weekly hours with it.
 - [x] Q6: five longest rides (with power).
 - [x] Q7: % of activities with heart rate and power data, by sport.
-- [ ] Then on to Week 2 (dbt staging).
+- [x] Then on to Week 2 (dbt staging).
 
 **Week 1 completed 16 Nov 2026.** (COROS FIT import skipped for now, because the watch already syncs to Strava.)
+
+---
+
+## Week 2: dbt staging
+
+### What I built
+- dbt project in `transform/` (dbt-core 1.12, dbt-duckdb), connected to `data/training.duckdb`.
+- Source `strava.strava_activities` → staging model **`stg_strava__activities`** (a view in `main_staging`):
+  de-duplicated with `QUALIFY row_number()`, renamed columns, km / seconds, swim pace per 100m,
+  the WeightTraining duration rule (`training_seconds`), power kept only for real power-meter data on bike and run,
+  and the route polyline kept for the heat map.
+- dbt tests: `activity_id` unique and not null; `sport_type` not null and in an accepted list;
+  `activity_date` and `training_seconds` not null.
+- Removed the COROS code (parser, loader section, `fitdecode`) because Strava is the only source now.
+- First `dbt docs` site.
+
+### What I learned
+- **dbt model** = a SELECT statement in a `.sql` file. dbt builds it as a view or table.
+- `{{ source() }}` points at raw tables and `{{ ref() }}` points at other models. dbt works out the build order from these.
+- **`QUALIFY`** filters on a window function directly, with no subquery (a neater version of my Week 1 de-dupe).
+- `dbt run` builds models, `dbt test` runs tests, and `dbt build` does both, in dependency order.
+- **Tests as guard-rails:** if Strava adds a new sport type, `accepted_values` fails instead of the new type
+  slipping through without anyone noticing.
+
+### Bug I found and fixed
+- Strava's `start_date_local` is local clock time **labelled as UTC**. My Week 1 `::timestamp` cast let DuckDB convert it
+  to London time, which **shifted every summer (BST) activity by an hour**. Fixed in staging with `timezone('UTC', start_date_local)`.

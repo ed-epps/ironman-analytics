@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_strava__activities
+    description: >
+      One row per Strava activity. De-duplicated (latest extract wins), renamed,
+      converted to km / seconds, with power kept only for real power-meter data on bike and run.
+    columns:
+      - name: activity_id
+        description: Strava's activity ID. Primary key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: sport_type
+        description: Strava's sport type (e.g. Ride, Run, Swim).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Ride
+                  - GravelRide
+                  - VirtualRide
+                  - MountainBikeRide
+                  - EBikeRide
+                  - Run
+                  - TrailRun
+                  - Swim
+                  - WeightTraining
+                  - Workout
+                  - HighIntensityIntervalTraining
+                  - Yoga
+                  - Walk
+                  - Hike
+                  - Padel
+                  - Tennis
+                  - Golf
+                  - Surfing
+                  - StandUpPaddling
+                  - Sail
+                  - Kayaking
+                  - Canoeing
+                  - Rowing
+
+      - name: activity_date
+        description: Local calendar date the activity started.
+        data_tests:
+          - not_null
+
+      - name: training_seconds
+        description: >
+          Duration used for training load. Elapsed time for WeightTraining, moving time for everything else.
+        data_tests:
+          - not_null
+
+      - name: distance_km
+        description: Distance in kilometres.
+
+      - name: swim_pace_sec_per_100m
+        description: Swim pace in seconds per 100m (Swim only).
+
+      - name: has_power_meter
+        description: True only when a bike or run has real power-meter data (not Strava's estimate).
+
+      - name: route_polyline
+        description: >
+          Strava's simplified route (encoded polyline). Private - a home privacy mask must be
+          applied before any route is published.

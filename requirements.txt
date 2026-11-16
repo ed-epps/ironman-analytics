@@ -1,6 +1,5 @@
 requests>=2.31
 python-dotenv>=1.0
 duckdb>=1.1
-fitdecode>=0.10
 pytz>=2024.1   # lets DuckDB hand timezone-aware timestamps back to Python
 dbt-duckdb>=1.11
