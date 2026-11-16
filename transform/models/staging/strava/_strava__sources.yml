@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: strava
+    schema: raw
+    tables:
+      - name: strava_activities
+        description: Every row from every Strava extract file. Duplicates kept on purpose.

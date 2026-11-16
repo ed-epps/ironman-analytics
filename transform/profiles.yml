@@ -1,0 +1,7 @@
+ironman:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/training.duckdb
+      threads: 4
