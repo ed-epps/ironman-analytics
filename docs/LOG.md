@@ -60,11 +60,32 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
 - **Last 16 full weeks (27 Jul – 15 Nov 2026): averaged 9.0 hours/week** of moving time. Biggest week was 15.3 h
   (w/c 14 Sep) and lightest was 3.4 h (w/c 28 Sep). Using `elapsed_time` would have overstated this by 23% (177.5 h vs 143.9 h).
 
+- **Data completeness (heart rate / real power-meter data):** Ride 79% / 63%, GravelRide 79% / 97%, VirtualRide 71% / 93%,
+  MountainBikeRide 69% / 0%, Run 99% / 76% (COROS running power), Swim 97% / 0%.
+  → Swim HR looks complete, but **swim HR from a wrist watch isn't reliable**, so it isn't used for load (see Decisions).
+  → Power shows up oddly on Walk, EBikeRide, Tennis and Workout (2–15%). Consider ignoring power outside cycling and running in staging.
+
 ### Decisions
 - **Duration rule:** strength / weight-lifting sessions use `elapsed_time` (rest between sets is part of the session).
-  Swim, bike and run use `moving_time`. To confirm: which Strava types count as strength (WeightTraining for sure; check Workout).
+  Everything else uses `moving_time`. **Strength = WeightTraining only** (I log all gym sessions as WeightTraining).
+  **Workout** is a catch-all for sports Strava doesn't list → Other, using `moving_time`.
+  Impact check: WeightTraining moving = elapsed (13.5 h each) because Strava sets them equal without GPS, so the rule
+  changes little today. I kept it explicit so the logic is documented and still holds if my watch ever pauses.
 - **Sport groups:** Swim / Bike / Run / Strength / Other. Everything else (Padel, Tennis, Golf, Walk, Hike, water sports...)
   is **Other**. → Becomes the sport dimension in Week 3, with a `duration_basis` column.
+
+- **Training-load method by sport (Week 4):**
+  - **Bike: power first, HR second.** Use power-based load (from normalised power vs FTP) whenever the ride has real power-meter data
+    (`device_watts = true`), and fall back to HR-based load otherwise. Power meters are only on some bikes for now, but more
+    will have them, so the model must pick the method **per ride**, not per bike or per sport.
+  - **Run: HR-based.** Run HR is reliable (99% coverage).
+  - **Swim: pace-based**, using my swim pace zones / threshold pace. Ignore swim HR.
+  - Inputs needed by Week 4: **FTP, max / threshold HR and threshold swim pace**, ideally with the dates they changed
+    → a small dbt seed (CSV) of thresholds over time.
+- **Personal physiology stays private.** The real thresholds file is **git-ignored**, like `.env`. The repo only
+  has an example file with made-up values, so the project still runs for anyone who clones it.
+  Public outputs (README, screenshots, dashboard) never **directly show** a threshold value. Showing derived metrics
+  (TSS, IF, normalised power, zone percentages) is fine, even if someone could work a threshold back out from them.
 
 ### Mistake I caught
 - My first hours/km query gave rides at 4.5 km/h. I'd summed a time column in the km line.
@@ -82,13 +103,19 @@ Only use `--full` on the extract if you deliberately want to re-download everyth
 - **Weekly grouping:** `date_trunc('week', ts)::date` turns a date into the Monday of its week.
   `::timestamp` / `::date` are casts (type conversions). A filter like `>= current_date - interval 16 weeks` gives a rolling window.
 - The current week is always partial, so leave it out of averages.
+- **CASE WHEN** for business rules (like DAX `SWITCH(TRUE(), ...)`): e.g. elapsed time for WeightTraining, otherwise moving time.
+- **Top N:** `order by x desc limit 5`. You don't need `group by` when you want individual rows.
+- **Percentage trick:** `avg(case when condition then 1 else 0 end)` = share of rows meeting the condition.
+- **NULL** means missing, not 0. Rides without a power meter have NULL watts.
 - **CTE (`with name as (...)`)**: a named temporary result you can query again. dbt models are written this way.
 
 ---
 
 ## Next session (to finish Week 1)
-- [ ] Check moving vs elapsed hours for WeightTraining / Workout, then confirm which types are "strength".
-- [ ] Write the `CASE WHEN` duration rule and re-run weekly hours with it.
-- [ ] Q6: five longest rides (with power).
-- [ ] Q7: % of activities with heart rate and power data, by sport.
+- [x] Check moving vs elapsed hours for WeightTraining / Workout, then confirm which types are "strength".
+- [x] Write the `CASE WHEN` duration rule and re-run weekly hours with it.
+- [x] Q6: five longest rides (with power).
+- [x] Q7: % of activities with heart rate and power data, by sport.
 - [ ] Then on to Week 2 (dbt staging).
+
+**Week 1 completed 16 Nov 2026.** (COROS FIT import skipped for now, because the watch already syncs to Strava.)
